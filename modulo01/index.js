@@ -2,45 +2,55 @@ const express = require('express');
 
 const server = express();
 
-server.use(express.json());// para o servidor conseguir ler o formato JSON.
+server.use(express.json());
 
-//localhost:3000/teste
-// query params = ?teste=1
-// route params = /users/1
-// request body = { "name": "Jéssica", "email": "jessica@gmail.com" }
+const users = ['Diego', 'Cláudio', 'Jéssica'];
 
-//CRUD - Created, Read, Update, Delete
-
-const users = ['Diego', 'Claudio',' Jéssica'];
-
-server.use((req, res, next) => { // middleware global.
+server.use((req, res, next) => {
     console.time('Request');
-    console.log(`Método: ${req.method}; URL: ${req.url}`);
+    console.log(`Método: ${req.method}; URL: ${req.url};`)
 
     next();
 
     console.timeEnd('Request');
 });
 
-server.get('/users', (req,res) => {
-    return res.json(users); //essa rota retorna todos os usuários.
+function checkUserExists(req, res, next) {
+    if (!req.body.name) {
+        return res.status(400).json({ error: 'User name is required' });
+    }
+
+    return next();
+}
+
+function checkUserInArray(req, res, next) {
+    const user = users[req.params.index];
+
+    if (!user) {
+        return res.status(400).json({ error: 'User does not exists' });
+    }
+
+    req.user = user;
+    return next();
+}
+
+server.get('/users', (req, res) => {
+    return res.json(users);
 })
 
-server.get('/users/:index', (req, res) => { 
-    const { index } = req.params;
-
-    return res.json(users[index]); 
+server.get('/users/:index', checkUserInArray, (req, res) => {
+    return res.json(req.user);
 })
 
-server.post('/users', (req,res) => { //criar novos usuários.
-    const { name } = req.body; //busca a propriedade name de dentro do corpo da requisição.
+server.post('/users', checkUserExists, (req, res) => {
+    const { name } = req.body;
 
     users.push(name);
 
     return res.json(users);
 });
 
-server.put('/users/:index', (req, res) => { //fazendo aleração.
+server.put('/users/:index', checkUserExists, checkUserInArray,  (req, res) => {
     const { index } = req.params;
     const { name } = req.body;
 
@@ -49,7 +59,7 @@ server.put('/users/:index', (req, res) => { //fazendo aleração.
     return res.json(users);
 });
 
-server.delete('/users/:index', (req, res) => {
+server.delete('/users/:index', checkUserInArray, (req, res) => {
     const { index } = req.params;
 
     users.splice(index, 1);
